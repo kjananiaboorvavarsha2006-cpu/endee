@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Smart Exam Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0a0c10;--surface:#111318;--border:#1e2230;
+  --accent:#6ee7b7;--accent2:#38bdf8;--accent3:#f472b6;
+  --text:#e8eaf0;--muted:#5a6072;--danger:#f87171;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;
+  min-height:100vh;padding:2rem 1rem;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(110,231,183,.03) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(110,231,183,.03) 1px,transparent 1px);
+  background-size:48px 48px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:800px;margin:0 auto}
+
+/* header */
+.header{text-align:center;margin-bottom:2.5rem}
+.badge{display:inline-flex;align-items:center;gap:6px;
+  background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.2);
+  color:var(--accent);font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;
+  padding:5px 14px;border-radius:100px;margin-bottom:1.2rem}
+.dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite}
+h1{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.8rem,5vw,2.8rem);
+  line-height:1.1;letter-spacing:-.02em;margin-bottom:.6rem}
+h1 span{background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.subtitle{color:var(--muted);font-size:.8rem;line-height:1.7}
+
+/* card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;
+  padding:2rem;margin-bottom:1.2rem;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(110,231,183,.4),transparent)}
+
+/* drop zone */
+.drop-zone{border:2px dashed var(--border);border-radius:14px;padding:2.5rem 2rem;
+  text-align:center;cursor:pointer;transition:all .3s}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);
+  background:rgba(110,231,183,.04);box-shadow:0 0 40px rgba(110,231,183,.12)}
+.up-icon{width:56px;height:56px;margin:0 auto 1rem;
+  background:linear-gradient(135deg,rgba(110,231,183,.15),rgba(56,189,248,.1));
+  border:1px solid rgba(110,231,183,.2);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;transition:transform .3s}
+.drop-zone.over .up-icon{transform:translateY(-5px) scale(1.08)}
+.up-icon svg{width:26px;height:26px;stroke:var(--accent)}
+.drop-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:.4rem}
+.drop-sub{font-size:.73rem;color:var(--muted);line-height:1.7}
+.drop-sub strong{color:var(--accent2)}
+#fileInput{display:none}
+
+/* file rows */
+.file-row{display:flex;align-items:center;gap:.8rem;
+  background:rgba(255,255,255,.02);border:1px solid var(--border);
+  border-radius:10px;padding:.7rem 1rem;animation:fadeUp .25s ease both}
+.f-type-badge{font-size:.63rem;font-weight:600;letter-spacing:.06em;
+  padding:3px 9px;border-radius:6px;border:1px solid;flex-shrink:0;white-space:nowrap}
+.f-info{flex:1;min-width:0}
+.f-name{font-family:'Syne',sans-serif;font-weight:600;font-size:.83rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.f-size{font-size:.7rem;color:var(--muted);margin-top:2px}
+.rm-btn{background:none;border:none;color:var(--muted);cursor:pointer;
+  padding:4px;border-radius:6px;transition:color .2s;display:flex;flex-shrink:0}
+.rm-btn:hover{color:var(--danger)}
+.rm-btn svg{width:15px;height:15px;stroke:currentColor}
+
+/* button */
+.btn{margin-top:1.5rem;width:100%;
+  background:linear-gradient(135deg,rgba(110,231,183,.9),rgba(56,189,248,.8));
+  border:none;border-radius:12px;color:#0a0c10;font-family:'Syne',sans-serif;
+  font-weight:700;font-size:.88rem;letter-spacing:.04em;padding:14px;
+  cursor:pointer;transition:all .3s;display:flex;align-items:center;
+  justify-content:center;gap:8px}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(110,231,183,.25)}
+.btn:active{transform:none}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.btn svg{width:17px;height:17px}
+.spinner{width:17px;height:17px;border:2px solid rgba(0,0,0,.3);
+  border-top-color:#0a0c10;border-radius:50%;animation:spin .7s linear infinite;display:none}
+
+/* subject pill */
+.subject-pill{display:inline-flex;align-items:center;gap:8px;
+  background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3);
+  color:var(--accent2);font-family:'Syne',sans-serif;font-weight:700;
+  font-size:.85rem;padding:6px 16px;border-radius:100px;margin-bottom:1.2rem}
+
+/* section title */
+.section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;
+  color:var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.section-title::before{content:'';display:block;width:3px;height:16px;
+  background:var(--accent);border-radius:2px}
+
+/* topic chips */
+.topic-chips{display:flex;flex-wrap:wrap;gap:.5rem}
+.chip{background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.2);
+  color:var(--accent);font-size:.72rem;padding:4px 12px;border-radius:100px}
+
+/* important question cards */
+.iq-card{background:rgba(255,255,255,.02);border:1px solid var(--border);
+  border-radius:14px;padding:1.2rem 1.3rem;margin-bottom:.9rem;
+  border-left:3px solid var(--accent);animation:fadeUp .3s ease both}
+.iq-topic{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent2);margin-bottom:.5rem}
+.iq-content{font-size:.78rem;line-height:1.85;color:#c8cad4;white-space:pre-wrap}
+.iq-content strong,.iq-q{color:var(--text);font-weight:600}
+
+/* summary box */
+.summary-box{background:rgba(110,231,183,.04);border:1px solid rgba(110,231,183,.15);
+  border-radius:12px;padding:1.1rem 1.2rem;font-size:.78rem;line-height:1.85;color:#c8cad4}
+
+/* ask box */
+.ask-row{display:flex;gap:.6rem;margin-top:1rem}
+.ask-input{flex:1;background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-family:'DM Mono',monospace;
+  font-size:.78rem;padding:10px 14px;outline:none;transition:border-color .2s}
+.ask-input:focus{border-color:rgba(110,231,183,.3)}
+.ask-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;border-radius:10px;color:#0a0c10;font-family:'Syne',sans-serif;
+  font-weight:700;font-size:.78rem;padding:10px 18px;cursor:pointer;
+  white-space:nowrap;transition:opacity .2s}
+.ask-btn:hover{opacity:.85}
+.ask-btn:disabled{opacity:.4;cursor:not-allowed}
+.rag-box{background:rgba(255,255,255,.02);border:1px solid var(--border);
+  border-radius:12px;padding:1.1rem;font-size:.76rem;line-height:1.85;
+  color:#c8cad4;white-space:pre-wrap;max-height:400px;overflow-y:auto;margin-top:.8rem}
+.rag-box::-webkit-scrollbar{width:4px}
+.rag-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* info cards */
+.info-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-top:1.2rem}
+.info-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:1.1rem 1rem;text-align:center;
+  transition:border-color .25s,transform .25s}
+.info-card:hover{border-color:rgba(110,231,183,.2);transform:translateY(-2px)}
+.ic-icon{font-size:1.3rem;margin-bottom:.4rem}
+.ic-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;margin-bottom:.25rem}
+.ic-desc{font-size:.67rem;color:var(--muted);line-height:1.5}
+
+.footer{text-align:center;margin-top:1.8rem;font-size:.67rem;color:var(--muted)}
+.footer a{color:var(--accent2);text-decoration:none}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge"><span class="dot"></span>RAG · Auto-Detect · LLM</div>
+    <h1>Smart <span>Exam Analyzer</span></h1>
+    <p class="subtitle">Upload any question paper — the AI detects the subject automatically<br>and generates the most important questions to study.</p>
+  </div>
+
+  <!-- Upload Card -->
+  <div class="card">
+    <div class="drop-zone" id="dropZone">
+      <div class="up-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4m0 0L8 8m4-4 4 4"/>
+          <path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/>
+        </svg>
+      </div>
+      <div class="drop-title">Drop your question papers here</div>
+      <div class="drop-sub">
+        Drag &amp; drop or <strong>click to browse</strong> · multiple files OK<br>
+        <strong>PDF · DOCX · TXT · CSV · XLSX · JSON · PNG · JPG</strong> · max 20 MB each
+      </div>
+      <input type="file" id="fileInput" multiple
+        accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,.json,.png,.jpg,.jpeg,.bmp,.tiff,.webp"/>
+    </div>
+
+    <div id="fileList" style="margin-top:1rem;display:flex;flex-direction:column;gap:.5rem"></div>
+
+    <button class="btn" id="analyzeBtn" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <div class="spinner" id="spinner"></div>
+      <span id="btnText">Analyze Files</span>
+    </button>
+  </div>
+
+  <!-- Results -->
+  <div id="results" style="display:none">
+
+    <!-- Detected Subject -->
+    <div class="card" style="text-align:center">
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:.5rem;letter-spacing:.1em;text-transform:uppercase">Detected Subject</div>
+      <div class="subject-pill" id="subjectPill">—</div>
+      <div style="font-size:.72rem;color:var(--muted)" id="statsLine">—</div>
+    </div>
+
+    <!-- Topics Found -->
+    <div class="card">
+      <div class="section-title">Topics Detected in Your Paper</div>
+      <div class="topic-chips" id="topicChips"></div>
+    </div>
+
+    <!-- Important Questions -->
+    <div class="card">
+      <div class="section-title">Important Questions to Study</div>
+      <div id="iqCards"></div>
+    </div>
+
+    <!-- Study Priority Summary -->
+    <div class="card">
+      <div class="section-title">Study Priority Guide</div>
+      <div class="summary-box" id="summaryBox"></div>
+    </div>
+
+    <!-- Ask anything -->
+    <div class="card">
+      <div class="section-title">Ask AI About Your Subject</div>
+      <div class="ask-row">
+        <input class="ask-input" id="askInput" type="text" placeholder="e.g. explain AVL tree rotations with example..."/>
+        <button class="ask-btn" id="askBtn">Ask AI</button>
+      </div>
+      <div class="rag-box" id="askBox" style="display:none"></div>
+    </div>
+
+  </div><!-- /results -->
+
+  <!-- Info cards -->
+  <div class="info-row">
+    <div class="info-card"><div class="ic-icon">🔍</div><div class="ic-title">Auto-Detect</div><div class="ic-desc">LLM identifies subject from your document</div></div>
+    <div class="info-card"><div class="ic-icon">📊</div><div class="ic-title">Topic Extraction</div><div class="ic-desc">Finds all key topics in your question paper</div></div>
+    <div class="info-card"><div class="ic-icon">⚡</div><div class="ic-title">Important Qs</div><div class="ic-desc">Groq LLaMA3 generates exam-ready answers</div></div>
+  </div>
+
+  <div class="footer">Smart Exam Analyzer · ChromaDB + SentenceTransformers + Groq · <a href="https://console.groq.com" target="_blank">Get API Key →</a></div>
+
+</div>
+
+<script>
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('fileInput');
+const fileList   = document.getElementById('fileList');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const spinner    = document.getElementById('spinner');
+const btnText    = document.getElementById('btnText');
+const results    = document.getElementById('results');
+const askBtn     = document.getElementById('askBtn');
+const askInput   = document.getElementById('askInput');
+const askBox     = document.getElementById('askBox');
+
+let selectedFiles = [];
+let detectedSubject = '';
+
+const TYPE_META = {
+  pdf:{color:'#f472b6',label:'PDF',icon:'📄'},
+  docx:{color:'#38bdf8',label:'DOCX',icon:'📝'},
+  doc:{color:'#38bdf8',label:'DOC',icon:'📝'},
+  txt:{color:'#6ee7b7',label:'TXT',icon:'📃'},
+  md:{color:'#6ee7b7',label:'MD',icon:'📃'},
+  csv:{color:'#fb923c',label:'CSV',icon:'📊'},
+  xlsx:{color:'#4ade80',label:'XLSX',icon:'📊'},
+  xls:{color:'#4ade80',label:'XLS',icon:'📊'},
+  json:{color:'#facc15',label:'JSON',icon:'🗂️'},
+  png:{color:'#c084fc',label:'PNG',icon:'🖼️'},
+  jpg:{color:'#c084fc',label:'JPG',icon:'🖼️'},
+  jpeg:{color:'#c084fc',label:'JPEG',icon:'🖼️'},
+};
+
+function getMeta(fn){const e=fn.split('.').pop().toLowerCase();return TYPE_META[e]||{color:'#5a6072',label:e.toUpperCase(),icon:'📎'}}
+
+dropZone.addEventListener('click',()=>fileInput.click());
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over')});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');addFiles([...e.dataTransfer.files])});
+fileInput.addEventListener('change',()=>addFiles([...fileInput.files]));
+
+function addFiles(files){
+  for(const f of files){
+    if(f.size>20*1024*1024){alert(`${f.name} exceeds 20 MB.`);continue}
+    if(!selectedFiles.find(x=>x.name===f.name&&x.size===f.size)) selectedFiles.push(f);
+  }
+  renderFileList();
+  results.style.display='none';
+}
+
+function removeFile(i){selectedFiles.splice(i,1);renderFileList()}
+
+function renderFileList(){
+  fileList.innerHTML=selectedFiles.map((f,i)=>{
+    const m=getMeta(f.name);
+    return `<div class="file-row">
+      <div class="f-type-badge" style="background:${m.color}22;border-color:${m.color}44;color:${m.color}">${m.icon} ${m.label}</div>
+      <div class="f-info"><div class="f-name">${f.name}</div><div class="f-size">${fmt(f.size)}</div></div>
+      <button class="rm-btn" onclick="removeFile(${i})">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>`;
+  }).join('');
+  analyzeBtn.disabled=selectedFiles.length===0;
+  btnText.textContent=selectedFiles.length?`Analyze ${selectedFiles.length} File${selectedFiles.length>1?'s':''}` :'Analyze Files';
+}
+
+function fmt(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB'}
+
+analyzeBtn.addEventListener('click',async()=>{
+  setLoading(true);
+  const fd=new FormData();
+  selectedFiles.forEach(f=>fd.append('files',f));
+  try{
+    const res=await fetch('/analyze',{method:'POST',body:fd});
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
+    renderResults(data);
+  }catch(e){alert('Error: '+e.message)}
+  finally{setLoading(false)}
+});
+
+function setLoading(on){
+  analyzeBtn.disabled=on;
+  spinner.style.display=on?'block':'none';
+  btnText.textContent=on?'Analyzing — this may take a moment...':`Analyze ${selectedFiles.length} File${selectedFiles.length>1?'s':''}`;
+}
+
+function renderResults(data){
+  detectedSubject=data.subject||'';
+
+  // Subject pill
+  document.getElementById('subjectPill').textContent='📚 '+data.subject;
+  document.getElementById('statsLine').textContent=`${data.total_lines} lines extracted · ${data.topics.length} topics found`;
+
+  // Topic chips
+  document.getElementById('topicChips').innerHTML=
+    data.topics.map(t=>`<span class="chip">${t}</span>`).join('');
+
+  // Important question cards
+  document.getElementById('iqCards').innerHTML=
+    data.questions.map((q,i)=>`
+      <div class="iq-card" style="animation-delay:${i*0.05}s">
+        <div class="iq-topic">Topic ${i+1} · ${q.topic}</div>
+        <div class="iq-content">${q.question}</div>
+      </div>`).join('');
+
+  // Summary
+  document.getElementById('summaryBox').textContent=data.summary;
+
+  results.style.display='block';
+  results.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+askBtn.addEventListener('click',async()=>{
+  const q=askInput.value.trim();
+  if(!q)return;
+  askBtn.disabled=true;askBtn.textContent='...';
+  askBox.style.display='block';askBox.textContent='Thinking...';
+  try{
+    const res=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query:q,subject:detectedSubject})});
+    const data=await res.json();
+    askBox.textContent=data.answer||data.error;
+  }catch(e){askBox.textContent='Error: '+e.message}
+  finally{askBtn.disabled=false;askBtn.textContent='Ask AI'}
+});
+askInput.addEventListener('keydown',e=>{if(e.key==='Enter')askBtn.click()});
+</script>
+</body>
+</html>

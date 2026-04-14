@@ -1,0 +1,9 @@
+flask
+chromadb
+sentence-transformers
+groq
+PyPDF2
+python-docx
+openpyxl
+Pillow
+pytesseract
